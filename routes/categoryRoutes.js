@@ -1,52 +1,40 @@
+import express from "express";
+import multer from "multer";
+import Category from "../models/Category.js";
+import path from "path";
+import fs from "fs";
 
-const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const Category = require('../models/category');
-const path = require('path');
 
-// Configure Multer storage
+const uploadDir = path.join("uploads");
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // save to /uploads folder
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, Date.now() + ext);
-  },
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname)
 });
+const upload = multer({ storage });
 
-const upload = multer({ storage: storage });
-
-
-// Update category
-router.put('/update/:id', upload.single('image'), async (req, res) => {
+router.post("/add", upload.single("image"), async (req, res) => {
   try {
-    const { name, details } = req.body;
-    const updateData = {
-      name,
-      details,
-    };
-
-    if (req.file) {
-      updateData.image = req.file.path; // Save path to DB
-    }
-
-    const updatedCategory = await Category.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true }
-    );
-
-    if (!updatedCategory) {
-      return res.status(404).json({ message: 'Category not found' });
-    }
-
-    res.json({ message: 'Category updated', category: updatedCategory });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    const { name } = req.body;
+    if (!name || !req.file) return res.status(400).json({ message: "Name and image required" });
+    const imageUrl = `/uploads/${req.file.filename}`;
+    const category = new Category({ name, imageUrl });
+    await category.save();
+    res.status(201).json({ message: "Category created", category });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 
-module.exports = router;
+router.get("/", async (req, res) => {
+  try {
+    const categories = await Category.find().sort({ createdAt: -1 });
+    res.json(categories);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+export default router;

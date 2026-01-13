@@ -1,28 +1,111 @@
-const express = require('express');
-const dotenv = require('dotenv');
-const cors = require('cors');
-const connectDB = require('./config/db');
-const { registerUser, loginUser } = require('./controllers/authController');
-const productRoutes = require('./routes/productRoute'); // note: you used productRoute in one place, productRoutes in another
+import express from "express";
+import dotenv from "dotenv";
+import cors from "cors";
+import mongoose from "mongoose";
+import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 
+// ✅ Stripe
+import Stripe from "stripe";
+
+// Routes
+import categoryRoutes from "./routes/categoryRoutes.js";
+import connectDB from "./config/db.js";
+import productRoutes from "./routes/productRoute.js";
+import profileRoutes from "./routes/profileRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
+
+
+// Controllers
+import { registerUser, loginUser } from "./controllers/authController.js";
 
 dotenv.config();
+const app = express();
 
-const app = express(); // must come BEFORE app.use calls
+// ✅ Fix for __dirname in ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
+// ✅ Stripe init
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Connect DB
 connectDB();
 
+// Middleware
 app.use(express.json());
 app.use(cors());
 
-// Static folder for uploads
-app.use('/uploads', express.static('uploads'));
+// ✅ Static folder for uploads
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Routes
-app.post('/api/register', registerUser);
-app.post('/api/login', loginUser);
-app.use('/api/products', productRoutes);
+// ================== AUTH ==================
+app.post("/api/register", registerUser);
+app.post("/api/login", loginUser);
+
+// ================== API Routes ==================
+app.use("/api/products", productRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/profile", profileRoutes);
+app.use("/api", paymentRoutes);
 
 
+// ================== PAYMENTS ==================
+
+// ✅ Create PaymentIntent
+app.post("/api/create-payment-intent", async (req, res) => {
+  try {
+    const { amount } = req.body; // amount in cents
+    if (!amount) {
+      return res.status(400).json({ error: "Amount is required" });
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency: "usd", // or "lkr" if supported
+      automatic_payment_methods: { enabled: true },
+    });
+
+    res.json({ clientSecret: paymentIntent.client_secret });
+  } catch (err) {
+    console.error("Stripe error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ Webhook endpoint (raw body required for signature verification)
+app.post(
+  "/api/webhook",
+  express.raw({ type: "application/json" }),
+  (req, res) => {
+    const sig = req.headers["stripe-signature"];
+    let event;
+
+    try {
+      event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET
+      );
+    } catch (err) {
+      console.error("Webhook signature verification failed:", err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    // Handle events
+    if (event.type === "payment_intent.succeeded") {
+      const pi = event.data.object;
+      console.log("✅ Payment succeeded:", pi.id, pi.amount);
+      // 👉 here you can save payment info to MongoDB if needed
+    } else {
+      console.log(`Unhandled event type: ${event.type}`);
+    }
+
+    res.json({ received: true });
+  }
+);
+
+// ================== SERVER START ==================
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

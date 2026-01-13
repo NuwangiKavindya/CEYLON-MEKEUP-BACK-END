@@ -1,7 +1,6 @@
-const Product = require('../models/manageProduct');
+import Product from "../models/Product.js";
 
-// Get all products
-const getProducts = async (req, res) => {
+export const getProducts = async (req, res) => {
   try {
     const products = await Product.find();
     res.json(products);
@@ -10,59 +9,46 @@ const getProducts = async (req, res) => {
   }
 };
 
-// Create product
-const createProduct = async (req, res) => {
+export const createProduct = async (req, res) => {
   try {
-    const { name, brand, price, description, stock, image } = req.body;
-    const newProduct = new Product({ name, brand, price, description, stock, image });
-    await newProduct.save();
-    res.status(201).json(newProduct);
+    const { name, brand, category, price, description, stock } = req.body;
+    const image = req.file ? req.file.path : null;
+
+    const product = new Product({ name, brand, category, price, description, stock, image });
+    await product.save();
+    res.status(201).json(product);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Update product
-const updateProduct = async (req, res) => {
+export const updateProduct = async (req, res) => {
   try {
-    const updatedProduct = await Product.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
+    const updatedProduct = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
     res.json(updatedProduct);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Delete product
-const deleteProduct = async (req, res) => {
+export const deleteProduct = async (req, res) => {
   try {
     await Product.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Product deleted' });
+    res.json({ message: "Product deleted" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Add product (alternative create)
-const addProduct = async (req, res) => {
+export const addProduct = async (req, res) => {
   try {
-    const { name, description, price, image, category } = req.body;
-    const newProduct = new Product({ name, description, price, image, category });
-    await newProduct.save();
-    res.status(201).json({ message: 'Product added successfully', product: newProduct });
-  } catch (error) {
-    res.status(500).json({ message: 'Error adding product', error: error.message });
-  }
-};
+    const { name, brand, category, price, description, stock } = req.body;
+    const image = req.file ? req.file.path : null;
 
-// Export all controllers
-module.exports = {
-  getProducts,
-  createProduct,
-  updateProduct,
-  deleteProduct,
-  addProduct
+    const product = new Product({ name, brand, category, price, description, stock, image });
+    const savedProduct = await product.save();
+    res.status(201).json(savedProduct);
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
 };
