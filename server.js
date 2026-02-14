@@ -15,13 +15,16 @@ import connectDB from "./config/db.js";
 import productRoutes from "./routes/productRoute.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
-
+import authRoutes from "./routes/authRoutes.js";
 
 // Controllers
-import { registerUser, loginUser } from "./controllers/authController.js";
+// import { registerUser, loginUser } from "./controllers/authController.js"; // Removed as now used in routes
 
 dotenv.config();
 const app = express();
+
+// ...
+
 
 // ✅ Fix for __dirname in ES Modules
 const __filename = fileURLToPath(import.meta.url);
@@ -37,12 +40,18 @@ connectDB();
 app.use(express.json());
 app.use(cors());
 
+
 // ✅ Static folder for uploads
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// Swagger
+import swaggerUi from "swagger-ui-express";
+import specs from "./config/swagger.js";
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
+
 // ================== AUTH ==================
-app.post("/api/register", registerUser);
-app.post("/api/login", loginUser);
+app.use("/api", authRoutes);
+
 
 // ================== API Routes ==================
 app.use("/api/products", productRoutes);
@@ -73,6 +82,8 @@ app.post("/api/create-payment-intent", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+
 
 // ✅ Webhook endpoint (raw body required for signature verification)
 app.post(
