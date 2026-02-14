@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-import Category from "../models/Category.js";
+import Category from "../models/category.js";
 import path from "path";
 import fs from "fs";
 
