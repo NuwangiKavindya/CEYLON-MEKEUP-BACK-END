@@ -6,6 +6,13 @@ import fs from "fs";
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   name: Categories
+ *   description: Category management
+ */
+
 const uploadDir = path.join("uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
@@ -15,6 +22,35 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+/**
+ * @swagger
+ * /api/categories/add:
+ *   post:
+ *     summary: Add a new category
+ *     tags: [Categories]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - image
+ *             properties:
+ *               name:
+ *                 type: string
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       201:
+ *         description: Category created
+ *       400:
+ *         description: Name and image required
+ *       500:
+ *         description: Server error
+ */
 router.post("/add", upload.single("image"), async (req, res) => {
   try {
     const { name } = req.body;
@@ -28,6 +64,18 @@ router.post("/add", upload.single("image"), async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/categories:
+ *   get:
+ *     summary: Get all categories
+ *     tags: [Categories]
+ *     responses:
+ *       200:
+ *         description: List of categories
+ *       500:
+ *         description: Server error
+ */
 router.get("/", async (req, res) => {
   try {
     const categories = await Category.find().sort({ createdAt: -1 });
