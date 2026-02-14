@@ -3,7 +3,7 @@ import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";   // ✅ ADD
 import { dirname } from "path";       // ✅ ADD
-import Product from "../models/Product.js";
+import Product from "../models/product.js";
 
 const router = express.Router();
 
