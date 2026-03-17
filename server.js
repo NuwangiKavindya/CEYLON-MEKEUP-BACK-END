@@ -16,6 +16,7 @@ import productRoutes from "./routes/productRoute.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
 
 // Controllers
 // import { registerUser, loginUser } from "./controllers/authController.js"; // Removed as now used in routes
@@ -58,6 +59,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api", paymentRoutes);
+app.use("/api/orders", orderRoutes);
 
 
 // ================== PAYMENTS ==================

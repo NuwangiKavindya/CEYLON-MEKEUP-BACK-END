@@ -4,6 +4,8 @@ import path from "path";
 import { fileURLToPath } from "url";   // ✅ ADD
 import { dirname } from "path";       // ✅ ADD
 import Product from "../models/product.js";
+import authMiddleware from "../middleware/authMiddleware.js";
+import adminMiddleware from "../middleware/adminMiddleware.js";
 
 const router = express.Router();
 
@@ -72,7 +74,7 @@ const upload = multer({ storage });
  *       500:
  *         description: Failed to add product
  */
-router.post("/", upload.single("image"), async (req, res) => {
+router.post("/", authMiddleware, adminMiddleware, upload.single("image"), async (req, res) => {
   try {
     const { name, brand, category, price, description, stock } = req.body;
 
@@ -98,8 +100,14 @@ router.post("/", upload.single("image"), async (req, res) => {
  * @swagger
  * /api/products:
  *   get:
- *     summary: Get all products
+ *     summary: Get all products or search by keyword
  *     tags: [Products]
+ *     parameters:
+ *       - in: query
+ *         name: keyword
+ *         schema:
+ *           type: string
+ *         description: Keyword to search in product name or brand
  *     responses:
  *       200:
  *         description: List of products
@@ -108,10 +116,85 @@ router.post("/", upload.single("image"), async (req, res) => {
  */
 router.get("/", async (req, res) => {
   try {
-    const products = await Product.find();
+    const { keyword } = req.query;
+    let query = {};
+
+    if (keyword) {
+      query = {
+        $or: [
+          { name: { $regex: keyword, $options: "i" } },
+          { brand: { $regex: keyword, $options: "i" } },
+          { category: { $regex: keyword, $options: "i" } },
+        ],
+      };
+    }
+
+    const products = await Product.find(query);
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: "Error fetching products" });
+  }
+});
+
+/**
+ * @swagger
+ * /api/products/{id}:
+ *   put:
+ *     summary: Update a product
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Product updated
+ *       500:
+ *         description: Server error
+ */
+router.put("/:id", authMiddleware, adminMiddleware, upload.single("image"), async (req, res) => {
+  try {
+    const updateData = { ...req.body };
+    if (req.file) {
+      updateData.image = req.file.filename;
+    }
+    const product = await Product.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    res.json(product);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/products/{id}:
+ *   delete:
+ *     summary: Delete a product
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Product deleted
+ *       500:
+ *         description: Server error
+ */
+router.delete("/:id", authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    await Product.findByIdAndDelete(req.params.id);
+    res.json({ message: "Product deleted" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 
