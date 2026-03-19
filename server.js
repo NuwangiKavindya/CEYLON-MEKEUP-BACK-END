@@ -39,7 +39,24 @@ connectDB();
 
 // Middleware
 app.use(express.json());
-app.use(cors());
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(",") 
+  : [
+      "http://18.234.226.210:3000",
+      "https://ceylon-makeup.ddns.net",
+      "http://ceylon-makeup.ddns.net"
+    ];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      return callback(new Error("The CORS policy for this site does not allow access from the specified Origin."), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true
+}));
 
 
 // ✅ Static folder for uploads
