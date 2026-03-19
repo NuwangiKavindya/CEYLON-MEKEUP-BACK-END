@@ -43,6 +43,7 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",") 
   : [
       "http://18.234.226.210:3000",
+      "http://18.234.226.210:5000",
       "https://ceylon-makeup.ddns.net",
       "http://ceylon-makeup.ddns.net"
     ];
